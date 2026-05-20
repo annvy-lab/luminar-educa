@@ -1,137 +1,147 @@
-import { Search, MapPin, GraduationCap, Star, BookOpen } from "lucide-react";
+"use client";
 
-import { Input } from "@/src/_components/ui/input";
-import { Badge } from "@/src/_components/ui/badge";
-import { Card, CardContent } from "@/src/_components/ui/card";
-import { Button } from "@/src/_components/ui/button";
+import { BookOpen } from "lucide-react";
+import * as React from "react";
+import { toast } from "sonner";
+
+import Footer from "@/_components/common/footer";
+import Navbar from "@/_components/common/navbar";
+import { ContentCard, ContentItem } from "@/_components/content-item";
+
+type SubjectTeacherFromApi = {
+  level: string | null;
+  subject: {
+    id: string;
+    name: string;
+    description: string | null;
+    iconSlug: string | null;
+  };
+  teacher: {
+    id: string;
+    bio: string | null;
+    hourlyRateCents: number | null;
+    user: {
+      id: string;
+      name: string;
+      avatarUrl: string | null;
+    };
+    stats: {
+      averageRating: number | null;
+      totalReviews: number;
+      completedBookings: number;
+    };
+  };
+};
 
 export default function SearchDashboardPage() {
-  const professors = [
-    {
-      id: 1,
-      name: "Ana Clara Silva",
-      expertise: "Matemática",
-      isRecentGrad: true,
-      bio: "Apaixonada por álgebra e geometria. Uso metodologias ativas para descomplicar os números e conectar a teoria com o seu dia a dia.",
-      rating: 5.0,
-      mode: "Online / Híbrido",
-      image: "https://i.pravatar.cc/150?u=a042581f4e29026024d",
-    },
-    {
-      id: 2,
-      name: "Marcelo Souza",
-      expertise: "Letras e Idiomas",
-      isRecentGrad: false,
-      bio: "Foco total na área de conversação e redação para o ENEM. Experiência em destravar alunos com dificuldade na expressão escrita.",
-      rating: 4.8,
-      mode: "Presencial",
-      image: "https://i.pravatar.cc/150?u=a04258a2462d826712d",
-    },
-    {
-      id: 3,
-      name: "Beatriz Oliveira",
-      expertise: "Ciências da Natureza",
-      isRecentGrad: true,
-      bio: "Bióloga focada em ecologia humana e biodiversidade. Minhas aulas conectam o livro didático aos problemas ambientais do nosso século.",
-      rating: 4.9,
-      mode: "Online",
-      image: "https://i.pravatar.cc/150?u=a042581f4e29026704d",
-    },
-    {
-      id: 4,
-      name: "Ricardo Mendes",
-      expertise: "Ciências Humanas",
-      isRecentGrad: true,
-      bio: "História não precisa ser apenas memorização. Venha entender a atualidade mundial aprendendo sobre as raízes da sociedade moderna.",
-      rating: 5.0,
-      mode: "Online / Híbrido",
-      image: "https://i.pravatar.cc/150?u=a04258114e29026702d",
-    },
-  ];
+  const [subjects, setSubjects] = React.useState<ContentItem[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    async function loadSubjects() {
+      try {
+        const response = await fetch("/api/subject-teachers", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Erro ao buscar conteúdos.");
+        }
+
+        const subjectMap = new Map<string, ContentItem>();
+
+        (data.subjectTeachers ?? []).forEach((item: SubjectTeacherFromApi) => {
+          const currentSubject = subjectMap.get(item.subject.id);
+
+          if (currentSubject) {
+            subjectMap.set(item.subject.id, {
+              ...currentSubject,
+              teacherCount: (currentSubject.teacherCount ?? 0) + 1,
+            });
+
+            return;
+          }
+
+          subjectMap.set(item.subject.id, {
+            id: item.subject.id,
+            name: item.subject.name,
+            description: item.subject.description,
+            iconSlug: item.subject.iconSlug,
+            teacherCount: 1,
+          });
+        });
+
+        setSubjects(Array.from(subjectMap.values()));
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Não foi possível carregar os conteúdos.";
+
+        toast.error("Erro ao carregar conteúdos", {
+          description: message,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadSubjects();
+  }, []);
 
   return (
-    <div className="flex min-h-screen w-full flex-col p-6 space-y-8 max-w-7xl mx-auto">
-      {/* Header Buscador */}
-      <div className="flex flex-col gap-4 mt-8">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          Encontre o <span className="text-primary">Professor</span> Ideal
-        </h1>
-        <p className="text-muted-foreground text-sm max-w-2xl">
-          Navegue pela nossa rede de educadores verificados. Uma oportunidade para você aprender e para incríveis profissionais recém-formados mostrarem seu valor.
-        </p>
+    <div className="flex min-h-screen flex-col">
+      <Navbar />
 
-        <div className="mt-4 flex w-full max-w-xl items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0 size-4 pointer-events-none" />
-            <Input
-              type="search"
-              placeholder="Busque por disciplina, área de atuação ou nome..."
-              className="pl-9 h-12 rounded-xl border-primary/20 bg-muted/20"
-            />
-          </div>
-          <Button size="lg" className="rounded-xl px-8 h-12">
-            Buscar
-          </Button>
-        </div>
-      </div>
+      <main className="flex flex-1">
+        <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-10 pt-0">
+          <section className="flex flex-col gap-4">
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border bg-muted/40 px-4 py-1.5 text-sm text-muted-foreground">
+              <BookOpen size={16} className="text-primary" strokeWidth={1.7} />
+              Biblioteca de Conteúdos
+            </div>
 
-      {/* Grid de Professores */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-6">
-        {professors.map((prof) => (
-          <Card key={prof.id} className="border-primary/10 bg-gradient-to-b from-background to-muted/20 shadow-md flex flex-col hover:border-primary/30 transition-colors">
-            <CardContent className="p-5 flex flex-col h-full gap-4">
-              
-              <div className="flex gap-4 items-start">
-                <img
-                  src={prof.image}
-                  alt={prof.name}
-                  className="size-14 rounded-full border-2 border-primary/20 object-cover"
-                />
-                <div className="flex flex-col gap-1 items-start">
-                  <h3 className="font-semibold text-base leading-tight">
-                    {prof.name}
-                  </h3>
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-md">
-                    <BookOpen size={12} />
-                    {prof.expertise}
-                  </div>
-                </div>
-              </div>
+            <div className="space-y-3">
+              <h1 className="text-3xl font-bold tracking-tight text-foreground lg:text-4xl">
+                Encontre o Conteúdo Ideal
+              </h1>
 
-              {prof.isRecentGrad && (
-                <div className="flex items-center gap-2 border border-primary/20 bg-primary/5 rounded-lg p-2 mt-2">
-                  <GraduationCap size={16} className="text-primary" />
-                  <span className="text-xs font-medium text-primary/90">
-                    Recém-formado: oportunidade de ouro!
-                  </span>
-                </div>
-              )}
-
-              <p className="text-xs text-muted-foreground leading-relaxed flex-1 mt-2 line-clamp-4">
-                {prof.bio}
+              <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                Pesquise por disciplinas, áreas de estudo e conteúdos
+                educacionais disponíveis na Luminar Educa.
               </p>
+            </div>
+          </section>
 
-              <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-border">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1 font-medium text-foreground">
-                    <Star size={14} className="fill-primary text-primary" />
-                    {prof.rating.toFixed(1)}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <MapPin size={14} />
-                    {prof.mode}
-                  </div>
-                </div>
+          {isLoading ? (
+            <section className="grid grid-cols-1 items-stretch gap-6 pt-8 md:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-[300px] animate-pulse rounded-xl border bg-muted/30"
+                />
+              ))}
+            </section>
+          ) : subjects.length > 0 ? (
+            <section className="grid grid-cols-1 items-stretch gap-6 pt-8 md:grid-cols-2 lg:grid-cols-3">
+              {subjects.map((subject) => (
+                <ContentCard key={subject.id} content={subject} />
+              ))}
+            </section>
+          ) : (
+            <div className="mt-8 rounded-xl border border-dashed bg-muted/20 p-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                Nenhum conteúdo disponível no momento.
+              </p>
+            </div>
+          )}
+        </div>
+      </main>
 
-                <Button variant="default" className="w-full relative shadow-sm h-9">
-                  Entrar em contato
-                </Button>
-              </div>
-
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Footer />
     </div>
   );
 }
